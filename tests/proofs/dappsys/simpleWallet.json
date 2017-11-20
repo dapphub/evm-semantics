@@ -1,0 +1,41 @@
+{
+    "add0": {
+        "pre": {
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6": {
+                "code": %SimpleWalletBytes, 
+                "nonce": "0x00", 
+                "balance": %WALLET_BALANCE, 
+                "storage": {
+                    "0x00": %OWNER_ID
+                }
+            },
+
+            "0x6": {
+                "code": "0x",
+                "nonce": "0x00",
+                "balance": "0x00",
+                "storage": {}
+            }
+        }, 
+        "exec": {
+            "origin": %OWNER_ID, 
+            "code": %SimpleWalletBytes, 
+            "caller": %OWNER_ID, 
+            "gas": "0xF4240", 
+            "value": "0x00", 
+            "address": "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", 
+            "data": "0x", 
+            "gasPrice": "0x5af3107a4000"
+        }, 
+        "post": {
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6": {
+                "code": %SimpleWalletBytes, 
+                "nonce": "0x00", 
+                "balance": "0x00", 
+                "storage": {
+                    "0x00": %OWNER_ID
+                }
+            }
+        } 
+    }
+}

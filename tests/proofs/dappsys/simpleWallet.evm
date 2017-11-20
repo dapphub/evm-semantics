@@ -1,0 +1,42 @@
+mkAcct 5
+mkAcct 6
+
+load "account": {
+            5: {
+                "code": %SimpleWalletBytes, 
+                "nonce": "0x00", 
+                "balance": "6", 
+                "storage": (0 |-> 6)
+            }
+        }
+
+load "exec": {
+            "code": %SimpleWalletBytes,
+            "caller": 6, 
+            "gas": 1000000, 
+            "value": "0x0", 
+            "address": 5, 
+            "data": "0x", 
+            "gasPrice": "0x5af3107a4000"
+        }
+
+start
+
+check "post": {
+            5: {
+                "code": %SimpleWalletBytes, 
+                "nonce": "0x00", 
+                "balance": 0, 
+                "storage": (0 |-> 6)
+            },
+
+            6: {
+                "code": .WordStack,
+                "nonce": 0,
+                "balance": 10,
+                "storage": .Map
+            }
+        }
+
+
+.EthereumSimulation
