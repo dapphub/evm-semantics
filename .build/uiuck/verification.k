@@ -83,5 +83,45 @@ module VERIFICATION
     rule %HKG_Program => #asMapOpCodes(#dasmOpCodes(%HKG_ProgramBytes, DEFAULT))
     rule %HKG_Program_buggy => #asMapOpCodes(#dasmOpCodes(%HKG_ProgramBytes_buggy, DEFAULT))
 
+// Dappsys contracts
+    syntax Int ::= "%WALLET_ID" [function]
+                 | "%OWNER_ID" [function]
+                 | "%WALLET_BALANCE" [function]
+
+    rule %WALLET_ID => 5 [macro]
+    rule %OWNER_ID => 6 [macro]
+    rule %WALLET_BALANCE => 710 [macro]
+
+    syntax WordStack ::= "%SimpleWalletBytes"       [function]
+                       | "%SimpleWalletBadBytes"       [function]
+    rule %SimpleWalletBytes => #parseByteStack("0x6000543314600957005b6000808080303133612350f100") [macro] //5af100") [macro]    
+    rule %SimpleWalletBadBytes => #parseByteStack("0x6000543314600957005b60008080803031335af100") [macro] //5af100") [macro]    
+    
+    syntax Map ::= "%SimpleWallet"           [function]
+                 | "%SimpleWalletBad"        [function]
+    rule %SimpleWallet => #asMapOpCodes(#dasmOpCodes(%SimpleWalletBytes, DEFAULT)) [macro]
+    rule %SimpleWalletBad => #asMapOpCodes(#dasmOpCodes(%SimpleWalletBadBytes, DEFAULT)) [macro]
+/*      => #asMapOpCodes( PUSH(1,0)   // 60 00
+                        ; SLOAD       // 54
+                        ; CALLER      // 33
+                        ; EQ          // 14
+                        ; PUSH(1,9)   // 60 09
+                        ; JUMPI       // 57
+                        ; STOP        // 00
+                        ; JUMPDEST    // 5b
+                        ; PUSH(1,0)   // 60 00
+                        ; DUP(1)      // 80
+                        ; DUP(1)      // 80
+                        ; DUP(1)      // 80
+                        ; ADDRESS     // 30
+                        ; BALANCE     // 31
+                        ; CALLER      // 33
+                        ; GAS         // 5a
+                        ; CALL        // f1
+                        ; STOP        // 00
+                        ; .OpCodes
+                        ) [macro]
+*/
+
 endmodule
 
