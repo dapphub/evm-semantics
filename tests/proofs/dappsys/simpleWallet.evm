@@ -21,6 +21,7 @@ load "exec": {
         }
 
 start
+flush
 
 check "post": {
             5: {
