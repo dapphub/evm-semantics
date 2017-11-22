@@ -88,8 +88,8 @@ module VERIFICATION
                  | "%OWNER_ID" [function]
                  | "%WALLET_BALANCE" [function]
 
-    rule %WALLET_ID => 5 [macro]
-    rule %OWNER_ID => 6 [macro]
+    rule %WALLET_ID => "0x5" [macro]
+    rule %OWNER_ID => "0x6" [macro]
     rule %WALLET_BALANCE => 710 [macro]
 
     syntax WordStack ::= "%SimpleWalletBytes"       [function]
