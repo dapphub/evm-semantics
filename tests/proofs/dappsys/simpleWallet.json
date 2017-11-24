@@ -18,7 +18,7 @@
         }, 
         //"logs": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347", 
         "exec": {
-            "origin": %OWNER_ID, 
+            "origin": %ORIGIN_ID, 
             "code": %SimpleWalletBytes, 
             "caller": %OWNER_ID, 
             "gas": "0x174876e800", 
@@ -31,7 +31,7 @@
         "gas": "0x17487699db", 
         "env": {
             "currentDifficulty": "0x0100", 
-            //"currentCoinbase": "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba", 
+            "currentCoinbase": %COINBASE_VALUE, 
             "currentNumber": "0x00", 
             "currentGasLimit": "0x0f4240", 
             "currentTimestamp": "0x01"
