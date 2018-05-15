@@ -43,7 +43,7 @@ distclean: clean
 # Dependencies
 # ------------
 
-deps: k-deps tangle-deps ocaml-deps plugin-deps
+deps: k-deps tangle-deps plugin-deps
 k-deps: $(K_SUBMODULE)/make.timestamp
 tangle-deps: $(PANDOC_TANGLE_SUBMODULE)/make.timestamp
 plugin-deps: $(PLUGIN_SUBMODULE)/make.timestamp
