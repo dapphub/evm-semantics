@@ -438,7 +438,8 @@ The `#next` operator executes a single step by:
     syntax InternalOp ::= "#badJumpDest?" "[" OpCode "]"
  // ----------------------------------------------------
     rule <k> #badJumpDest? [ OP    ] => . ... </k> requires notBool isJumpOp(OP)
-    rule <k> #badJumpDest? [ OP    ] => . ... </k> <wordStack> DEST  : WS </wordStack> <program> ... DEST |-> JUMPDEST ... </program> requires isJumpOp(OP)
+    rule <k> #badJumpDest? [ JUMP  ] => . ... </k> <wordStack> DEST  : WS    </wordStack> <program> ... DEST |-> JUMPDEST ... </program>
+    rule <k> #badJumpDest? [ JUMPI ] => . ... </k> <wordStack> DEST : I : WS </wordStack> <program> ... DEST |-> JUMPDEST ... </program> requires I =/=Int 0
     rule <k> #badJumpDest? [ JUMPI ] => . ... </k> <wordStack> _ : I : WS </wordStack> requires I ==Int 0
 
     rule <k> #badJumpDest? [ JUMP ] => #end EVMC_BAD_JUMP_DESTINATION ... </k>
