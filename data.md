@@ -135,8 +135,8 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 
     syntax Bool ::= word2Bool ( Int ) [function]
  // --------------------------------------------
-    rule word2Bool( 0 ) => false
-    rule word2Bool( W ) => true  requires W =/=K 0
+    rule word2Bool( W ) => false requires W ==Int 0
+    rule word2Bool( W ) => true  requires W =/=Int 0
 ```
 
 -   `sgn` gives the twos-complement interperetation of the sign of a word.
@@ -238,10 +238,10 @@ The corresponding `<op>Word` operations automatically perform the correct modulu
     rule W0 -Word W1 => chop( W0 -Int W1 ) requires W0 >=Int W1
     rule W0 -Word W1 => chop( (W0 +Int pow256) -Int W1 ) requires W0 <Int W1
     rule W0 *Word W1 => chop( W0 *Int W1 )
-    rule W0 /Word 0  => 0
-    rule W0 /Word W1 => chop( W0 /Int W1 ) requires W1 =/=K 0
-    rule W0 %Word 0  => 0
-    rule W0 %Word W1 => chop( W0 modInt W1 ) requires W1 =/=K 0
+    rule W0 /Word W1  => 0                 requires W1 ==Int 0
+    rule W0 /Word W1 => chop( W0 /Int W1 ) requires W1 =/=Int 0
+    rule W0 %Word W1  => 0                 requires W1 ==Int 0
+    rule W0 %Word W1 => chop( W0 modInt W1 ) requires W1 =/=Int 0
 ```
 
 Care is needed for `^Word` to avoid big exponentiation.
@@ -255,7 +255,7 @@ The helper `powmod` is a totalization of the operator `_^%Int__` (which comes wi
     rule W0 ^Word W1 => powmod(W0, W1, pow256)
 
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
-    rule powmod(W0, W1, 0)  => 0
+    rule powmod(W0, W1, W2)  => 0              requires W2 ==Int 0
 ```
 
 `/sWord` and `%sWord` give the signed interperetations of `/Word` and `%Word`.
@@ -269,7 +269,7 @@ The helper `powmod` is a totalization of the operator `_^%Int__` (which comes wi
 
     syntax Int ::= #sgnInterp ( Int , Int ) [function]
  // --------------------------------------------------
-    rule #sgnInterp( 0  , W1 ) => 0
+    rule #sgnInterp( W0 , W1 ) => 0          requires W0 ==Int 0
     rule #sgnInterp( W0 , W1 ) => W1         requires W0 >Int 0
     rule #sgnInterp( W0 , W1 ) => 0 -Word W1 requires W0 <Int 0
 ```
@@ -418,7 +418,7 @@ A cons-list is used for the EVM wordstack.
 ```k
     syntax Int ::= WordStack "[" Int "]" [function]
  // -----------------------------------------------
-    rule (W0 : WS)   [0] => W0
+    rule (W0 : WS)   [N] => W0           requires N ==Int 0
     rule (.WordStack)[N] => 0            requires N >Int 0
     rule (W0 : WS)   [N] => WS[N -Int 1] requires N >Int 0
 
@@ -428,7 +428,7 @@ A cons-list is used for the EVM wordstack.
 
     syntax WordStack ::= WordStack "[" Int ":=" Int "]" [function]
  // --------------------------------------------------------------
-    rule (W0 : WS)  [ 0 := W ] => W  : WS
+    rule (W0 : WS)  [ N := W ] => W  : WS                             requires N ==Int 0
     rule .WordStack [ N := W ] => 0  : (.WordStack [ N -Int 1 := W ]) requires N >Int 0
     rule (W0 : WS)  [ N := W ] => W0 : (WS [ N -Int 1 := W ])         requires N >Int 0
 ```
@@ -500,9 +500,9 @@ The local memory of execution is a byte-array (instead of a word-array).
     syntax WordStack ::= #asByteStack ( Int )             [function]
                        | #asByteStack ( Int , WordStack ) [function, klabel(#asByteStackAux), smtlib(asByteStack)]
  // --------------------------------------------------------------------------------------------------------------
-    rule #asByteStack( W ) => #asByteStack( W , .WordStack )                                        [concrete]
-    rule #asByteStack( 0 , WS ) => WS                                                            // [concrete]
-    rule #asByteStack( W , WS ) => #asByteStack( W /Int 256 , W modInt 256 : WS ) requires W =/=K 0 [concrete]
+    rule #asByteStack( W ) => #asByteStack( W , .WordStack )                                           [concrete]  
+    rule #asByteStack( W , WS ) => WS                                             requires W ==Int 0   // [concrete]
+    rule #asByteStack( W , WS ) => #asByteStack( W /Int 256 , W modInt 256 : WS ) requires W =/=K 0    [concrete]
 ```
 
 Addresses
@@ -601,7 +601,7 @@ We are using the polymorphic `Map` sort for these word maps.
  // ----------------------------------------------------------------------------------------
     rule #range(WM, START, WIDTH) => #range(WM, START +Int WIDTH -Int 1, WIDTH, .WordStack)
 
-    rule #range(WM,           END, 0,     WS) => WS
+    rule #range(WM,           END, WIDTH, WS) => WS                                           requires WIDTH ==Int 0
     rule #range(WM,           END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, 0 : WS) requires (WIDTH >Int 0) andBool notBool END in_keys(WM)
     rule #range(END |-> W WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, W : WS) requires (WIDTH >Int 0)
 ```
@@ -675,8 +675,8 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
     rule #parseMap( { .JSONList                   } ) => .Map
-    rule #parseMap( { _   : (VALUE:String) , REST } ) => #parseMap({ REST })                                                requires #parseHexWord(VALUE) ==K 0
-    rule #parseMap( { KEY : (VALUE:String) , REST } ) => #parseMap({ REST }) [ #parseHexWord(KEY) <- #parseHexWord(VALUE) ] requires #parseHexWord(VALUE) =/=K 0
+    rule #parseMap( { _   : (VALUE:String) , REST } ) => #parseMap({ REST })                                                requires #parseHexWord(VALUE) ==Int 0
+    rule #parseMap( { KEY : (VALUE:String) , REST } ) => #parseMap({ REST }) [ #parseHexWord(KEY) <- #parseHexWord(VALUE) ] requires #parseHexWord(VALUE) =/=Int 0
 
     syntax Int ::= #parseAddr ( String ) [function]
  // -----------------------------------------------
@@ -725,7 +725,7 @@ Encoding
                     | #rlpEncodeString ( String )       [function]
                     | #rlpEncodeAccount ( Account )     [function]
  // --------------------------------------------------------------
-    rule #rlpEncodeWord(0) => "\x80"
+    rule #rlpEncodeWord(WORD) => "\x80"           requires WORD ==Int 0
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
     rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asByteStack(WORD)), 128) requires WORD >=Int 128
 
