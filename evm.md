@@ -1935,7 +1935,7 @@ Grumble grumble, K sucks at `owise`.
 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
  // ----------------------------------------------------------------
-    rule #memoryUsageUpdate(MU, START, 0)     => MU
+    rule #memoryUsageUpdate(MU, START, WIDTH) => MU                                       requires WIDTH ==Int 0
     rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (START +Int WIDTH) up/Int 32) requires WIDTH >Int 0
 ```
 
@@ -2115,8 +2115,8 @@ There are several helpers for calculating gas (most of them also specified in th
     rule Cnew(SCHED, VALUE, ISEMPTY:Bool)
       => #if ISEMPTY andBool (VALUE =/=Int 0 orBool Gzerovaluenewaccountgas << SCHED >>) #then Gnewaccount < SCHED > #else 0 #fi
 
-    rule Cxfer(SCHED, 0) => 0
-    rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
+    rule Cxfer(SCHED, N) => 0                    requires N ==Int 0
+    rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=Int 0
 
     syntax BExp    ::= Bool
     syntax KResult ::= Bool
@@ -2149,7 +2149,7 @@ There are several helpers for calculating gas (most of them also specified in th
     rule G0(SCHED, .WordStack, true)  => Gtxcreate    < SCHED >
     rule G0(SCHED, .WordStack, false) => Gtransaction < SCHED >
 
-    rule G0(SCHED, 0 : REST, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
+    rule G0(SCHED, N : REST, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE) reqyures N ==Int 0
     rule G0(SCHED, N : REST, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
