@@ -238,7 +238,7 @@ The corresponding `<op>Word` operations automatically perform the correct modulu
     rule W0 -Word W1 => chop( W0 -Int W1 ) requires W0 >=Int W1
     rule W0 -Word W1 => chop( (W0 +Int pow256) -Int W1 ) requires W0 <Int W1
     rule W0 *Word W1 => chop( W0 *Int W1 )
-	rule W0 /Word W1  => 0                 requires W1 ==Int 0
+    rule W0 /Word W1  => 0                 requires W1 ==Int 0
     rule W0 /Word W1 => chop( W0 /Int W1 ) requires W1 =/=Int 0
     rule W0 %Word W1  => 0                 requires W1 ==Int 0
     rule W0 %Word W1 => chop( W0 modInt W1 ) requires W1 =/=Int 0
