@@ -231,7 +231,7 @@ The corresponding `<op>Word` operations automatically perform the correct modulu
     syntax Int ::= Int "+Word" Int [function]
                  | Int "*Word" Int [function]
                  | Int "-Word" Int [function]
-                 | Int "/Word" Int [function]
+                 | Int "/Word" Int [function, smtlib(smt_div_word)]
                  | Int "%Word" Int [function]
  // -----------------------------------------
     rule W0 +Word W1 => chop( W0 +Int W1 )
@@ -500,7 +500,7 @@ The local memory of execution is a byte-array (instead of a word-array).
     syntax WordStack ::= #asByteStack ( Int )             [function]
                        | #asByteStack ( Int , WordStack ) [function, klabel(#asByteStackAux), smtlib(asByteStack)]
  // --------------------------------------------------------------------------------------------------------------
-    rule #asByteStack( W ) => #asByteStack( W , .WordStack )                                           [concrete]  
+    rule #asByteStack( W ) => #asByteStack( W , .WordStack )                                           [concrete]
     rule #asByteStack( W , WS ) => WS                                             requires W ==Int 0   // [concrete]
     rule #asByteStack( W , WS ) => #asByteStack( W /Int 256 , W modInt 256 : WS ) requires W =/=K 0    [concrete]
 ```
