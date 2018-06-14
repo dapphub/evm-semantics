@@ -44,10 +44,12 @@ These can be used for pattern-matching on the LHS of rules as well (`macro` attr
 ```k
     syntax Int ::= "pow256" [function] /* 2 ^Int 256 */
                  | "pow255" [function] /* 2 ^Int 255 */
+                 | "pow160" [function] /* 2 ^Int 160 */
                  | "pow16"  [function] /* 2 ^Int 16  */
  // ---------------------------------------------------
     rule pow256 => 115792089237316195423570985008687907853269984665640564039457584007913129639936 [macro]
     rule pow255 => 57896044618658097711785492504343953926634992332820282019728792003956564819968  [macro]
+    rule pow160 => 1461501637330902918203684832716283019655932542976 [macro]
     rule pow16  => 65536 [macro]
 
     syntax Int ::= "minSInt128"      [function]
@@ -167,11 +169,9 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 
     syntax Int ::= #unsigned ( Int ) [function]
  // -----------------------------------------
-    rule #unsigned(DATA) => DATA
-      requires 0 <=Int DATA andBool DATA <=Int maxSInt256
+    rule #unsigned(DATA) => chop(DATA)
+      requires minSInt256 <=Int DATA andBool DATA <=Int maxSInt256
 
-    rule #unsigned(DATA) => pow256 +Int DATA
-      requires minSInt256 <=Int DATA andBool DATA <Int 0
 ```
 
 ### Empty Account
@@ -513,7 +513,7 @@ Addresses
 ```k
     syntax Int ::= #addr ( Int ) [function]
  // ---------------------------------------
-    rule #addr(W) => W %Word (2 ^Word 160)
+    rule #addr(W) => W %Word pow160
 ```
 
 -   `#newAddr` computes the address of a new account given the address and nonce of the creating account.

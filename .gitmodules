@@ -26,3 +26,4 @@
 [submodule ".build/k"]
 	path = .build/k
 	url = https://github.com/dapphub/k.git
+	ignore = untracked
