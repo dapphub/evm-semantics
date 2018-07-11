@@ -42,6 +42,7 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
                       | #bytes32 ( Int )
                       | #bool    ( Int )
                       | #bytes   ( Int , Int )
+                      | #array   ( TypedArg , Int , TypedArgs )
  // ------------------------------------------
 
     syntax TypedArgs ::= List{TypedArg, ","} [klabel(typedArgs)]
@@ -119,6 +120,19 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
  // ---------------------------------------------------------
     rule #sizeOfDynamicType(#bytes(N, _)) => 32 +Int #ceil32(N)
 
+    rule #sizeOfDynamicType(#array(T, N, _)) => 32 *Int (1 +Int N)
+      requires #isStaticType(T)
+
+    rule #sizeOfDynamicType(#array(T, N, ELEMS)) => 32 *Int (1 +Int N +Int #sizeOfDynamicTypeAux(ELEMS))
+      requires notBool #isStaticType(T)
+
+    syntax Int ::= #sizeOfDynamicTypeAux( TypedArgs ) [function]
+ // -------------------------------------------------------
+    rule #sizeOfDynamicTypeAux(TARG, TARGS) => #sizeOfDynamicType(TARG) +Int #sizeOfDynamicTypeAux(TARGS)
+      requires notBool #isStaticType(TARG)
+
+    rule #sizeOfDynamicTypeAux(.TypedArgs) => 0
+
     syntax WordStack ::= #enc ( TypedArg ) [function]
  // -------------------------------------------------
     // static Type
@@ -131,7 +145,8 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
     rule #enc(   #bool( DATA )) => #padToWidth(32, #asByteStack(#getValue(   #bool( DATA ))))
 
     // dynamic Type
-    rule #enc( #bytes(N, DATA)) => #enc(#uint256(N)) ++ #padToWidth(#ceil32(N), #asByteStack(DATA))
+    rule #enc(   #bytes(N, DATA)) => #enc(#uint256(N)) ++ #padToWidth(#ceil32(N), #asByteStack(DATA))
+    rule #enc(#array(_, N, DATA)) => #enc(#uint256(N)) ++ #encodeArgs(DATA)
 
     syntax Int ::= #getValue ( TypedArg ) [function]
  // ------------------------------------------------
