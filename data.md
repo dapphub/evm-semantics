@@ -167,7 +167,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
     rule #signed(DATA) => DATA -Int pow256
       requires maxSInt256 <Int DATA andBool DATA <=Int maxUInt256
 
-    syntax Int ::= #unsigned ( Int ) [function]
+    syntax Int ::= #unsigned ( Int ) [function, smtlib(unsigned)]
  // -----------------------------------------
     rule #unsigned(DATA) => DATA
       requires 0 <=Int DATA andBool DATA <=Int maxSInt256
