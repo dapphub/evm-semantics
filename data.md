@@ -130,7 +130,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 -   `word2Bool` interperets a `Int` as a `Bool`.
 
 ```k
-    syntax Int ::= bool2Word ( Bool ) [function]
+    syntax Int ::= bool2Word ( Bool ) [function, smtlib(smt_bool2Word)]
  // --------------------------------------------
     rule bool2Word( B:Bool ) => 1 requires B
     rule bool2Word( B:Bool ) => 0 requires notBool B
@@ -145,7 +145,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 -   `abs` gives the twos-complement interperetation of the magnitude of a word.
 
 ```k
-    syntax Int ::= sgn ( Int ) [function]
+    syntax Int ::= sgn ( Int ) [function, smtlib(smt_sgn)]
                  | abs ( Int ) [function]
  // -------------------------------------
     rule sgn(I) => -1 requires I >=Int pow255
@@ -169,10 +169,10 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 
     syntax Int ::= #unsigned ( Int ) [function, smtlib(unsigned)]
  // -----------------------------------------
-    rule #unsigned(DATA) => DATA
+    rule #unsigned(DATA) => DATA                                  [concrete]
       requires 0 <=Int DATA andBool DATA <=Int maxSInt256
 
-    rule #unsigned(DATA) => pow256 +Int DATA
+    rule #unsigned(DATA) => pow256 +Int DATA                      [concrete]
       requires minSInt256 <=Int DATA andBool DATA <Int 0
 ```
 
@@ -616,7 +616,7 @@ We are using the polymorphic `Map` sort for these word maps.
 -   `#lookup` looks up a key in a map and returns 0 if the key doesn't exist, otherwise returning its value.
 
 ```k
-    syntax Int ::= #lookup ( Map , Int ) [function]
+    syntax Int ::= #lookup ( Map , Int ) [function, smtlib(smt_lookup)]
  // -----------------------------------------------
     rule #lookup( (KEY |-> VAL) M, KEY ) => VAL
     rule #lookup(               M, KEY ) => 0 requires notBool KEY in_keys(M)
