@@ -169,11 +169,11 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 
     syntax Int ::= #unsigned ( Int ) [function, smtlib(unsigned)]
  // -----------------------------------------
-    rule #unsigned(DATA) => DATA                                  [concrete]
-      requires 0 <=Int DATA andBool DATA <=Int maxSInt256
+    rule #unsigned(DATA) => DATA
+      requires 0 <=Int DATA andBool DATA <=Int maxSInt256         [concrete]
 
-    rule #unsigned(DATA) => pow256 +Int DATA                      [concrete]
-      requires minSInt256 <=Int DATA andBool DATA <Int 0
+    rule #unsigned(DATA) => pow256 +Int DATA
+      requires minSInt256 <=Int DATA andBool DATA <Int 0          [concrete]
 ```
 
 ### Empty Account
