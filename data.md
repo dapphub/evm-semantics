@@ -145,14 +145,14 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
 -   `abs` gives the twos-complement interperetation of the magnitude of a word.
 
 ```k
-    syntax Int ::= sgn ( Int ) [function]
-                 | abs ( Int ) [function]
+    syntax Int ::= sgn ( Int ) [function, smtlib(signed_sgn)]
+                 | abs ( Int ) [function, smtlib(signed_abs)]
  // -------------------------------------
     rule sgn(I) => -1 requires I >=Int pow255
     rule sgn(I) => 1  requires I <Int pow255
 
-    rule abs(I) => 0 -Word I requires sgn(I) ==K -1
-    rule abs(I) => I         requires sgn(I) ==K 1
+    rule abs(I) => 0 -Word I requires sgn(I) ==K -1 [concrete]
+    rule abs(I) => I         requires sgn(I) ==K 1  [concrete]
 ```
 
 -   #signed : uInt256 -> sInt256  (i.e., [minUInt256..maxUInt256] -> [minSInt256..maxSInt256])
@@ -162,18 +162,18 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's
     syntax Int ::= #signed ( Int ) [function, smtlib(signed)]
  // -----------------------------------------
     rule #signed(DATA) => DATA
-      requires 0 <=Int DATA andBool DATA <=Int maxSInt256
+      requires 0 <=Int DATA andBool DATA <=Int maxSInt256 [concrete]
 
     rule #signed(DATA) => DATA -Int pow256
-      requires maxSInt256 <Int DATA andBool DATA <=Int maxUInt256
+      requires maxSInt256 <Int DATA andBool DATA <=Int maxUInt256 [concrete]
 
     syntax Int ::= #unsigned ( Int ) [function, smtlib(unsigned)]
  // -----------------------------------------
     rule #unsigned(DATA) => DATA
-      requires 0 <=Int DATA andBool DATA <=Int maxSInt256
+      requires 0 <=Int DATA andBool DATA <=Int maxSInt256 [concrete]
 
     rule #unsigned(DATA) => pow256 +Int DATA
-      requires minSInt256 <=Int DATA andBool DATA <Int 0
+      requires minSInt256 <=Int DATA andBool DATA <Int 0 [concrete]
 ```
 
 ### Empty Account
