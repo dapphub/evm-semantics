@@ -37,6 +37,8 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
     syntax TypedArg ::= #uint160 ( Int )
                       | #address ( Int )
                       | #uint256 ( Int )
+                      | #uint48  ( Int )
+                      | #uint8   ( Int )
                       | #int256  ( Int )
                       | #int128  ( Int )
                       | #bytes32 ( Int )
@@ -65,14 +67,16 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
 
     syntax String ::= #typeName ( TypedArg ) [function]
  // ---------------------------------------------------
-    rule #typeName(#uint160( _ )) => "uint160"
-    rule #typeName(#address( _ )) => "address"
-    rule #typeName(#uint256( _ )) => "uint256"
-    rule #typeName( #int256( _ )) => "int256"
-    rule #typeName( #int128( _ )) => "int128"
-    rule #typeName(#bytes32( _ )) => "bytes32"
-    rule #typeName(   #bool( _ )) => "bool"
-    rule #typeName( #bytes(_, _)) => "bytes"
+    rule #typeName(   #uint160( _ )) => "uint160"
+    rule #typeName(   #address( _ )) => "address"
+    rule #typeName(   #uint256( _ )) => "uint256"
+    rule #typeName(    #uint48( _ )) => "uint48"
+    rule #typeName(     #uint8( _ )) => "uint8"
+    rule #typeName(    #int256( _ )) => "int256"
+    rule #typeName(    #int128( _ )) => "int128"
+    rule #typeName(   #bytes32( _ )) => "bytes32"
+    rule #typeName(      #bool( _ )) => "bool"
+    rule #typeName(    #bytes(_, _)) => "bytes"
 
     syntax WordStack ::= #encodeArgs    ( TypedArgs )                               [function]
     syntax WordStack ::= #encodeArgsAux ( TypedArgs , Int , WordStack , WordStack ) [function]
@@ -96,25 +100,29 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
 
     syntax Int ::= #lenOfHead ( TypedArg ) [function]
  // -------------------------------------------------
-    rule #lenOfHead(#uint160( _ )) => 32
-    rule #lenOfHead(#address( _ )) => 32
-    rule #lenOfHead(#uint256( _ )) => 32
-    rule #lenOfHead( #int256( _ )) => 32
-    rule #lenOfHead( #int128( _ )) => 32
-    rule #lenOfHead(#bytes32( _ )) => 32
-    rule #lenOfHead(   #bool( _ )) => 32
-    rule #lenOfHead( #bytes(_, _)) => 32
+    rule #lenOfHead(  #uint160( _ )) => 32
+    rule #lenOfHead(  #address( _ )) => 32
+    rule #lenOfHead(  #uint256( _ )) => 32
+    rule #lenOfHead(   #uint48( _ )) => 32
+    rule #lenOfHead(    #uint8( _ )) => 32
+    rule #lenOfHead(   #int256( _ )) => 32
+    rule #lenOfHead(   #int128( _ )) => 32
+    rule #lenOfHead(  #bytes32( _ )) => 32
+    rule #lenOfHead(     #bool( _ )) => 32
+    rule #lenOfHead(   #bytes(_, _)) => 32
 
     syntax Bool ::= #isStaticType ( TypedArg ) [function]
  // -----------------------------------------------------
-    rule #isStaticType(#uint160( _ )) => true
-    rule #isStaticType(#address( _ )) => true
-    rule #isStaticType(#uint256( _ )) => true
-    rule #isStaticType( #int256( _ )) => true
-    rule #isStaticType( #int128( _ )) => true
-    rule #isStaticType(#bytes32( _ )) => true
-    rule #isStaticType(   #bool( _ )) => true
-    rule #isStaticType( #bytes(_, _)) => false
+    rule #isStaticType(  #uint160( _ )) => true
+    rule #isStaticType(  #address( _ )) => true
+    rule #isStaticType(  #uint256( _ )) => true
+    rule #isStaticType(   #uint48( _ )) => true
+    rule #isStaticType(    #uint8( _ )) => true
+    rule #isStaticType(   #int256( _ )) => true
+    rule #isStaticType(   #int128( _ )) => true
+    rule #isStaticType(  #bytes32( _ )) => true
+    rule #isStaticType(     #bool( _ )) => true
+    rule #isStaticType(   #bytes(_, _)) => false
 
     syntax Int ::= #sizeOfDynamicType ( TypedArg ) [function]
  // ---------------------------------------------------------
@@ -139,6 +147,8 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
     rule #enc(#uint160( DATA )) => #padToWidth(32, #asByteStack(#getValue(#uint160( DATA ))))
     rule #enc(#address( DATA )) => #padToWidth(32, #asByteStack(#getValue(#address( DATA ))))
     rule #enc(#uint256( DATA )) => #padToWidth(32, #asByteStack(#getValue(#uint256( DATA ))))
+    rule #enc( #uint48( DATA )) => #padToWidth(32, #asByteStack(#getValue( #uint48( DATA ))))
+    rule #enc(  #uint8( DATA )) => #padToWidth(32, #asByteStack(#getValue(  #uint8( DATA ))))
     rule #enc( #int256( DATA )) => #padToWidth(32, #asByteStack(#getValue( #int256( DATA ))))
     rule #enc( #int128( DATA )) => #padToWidth(32, #asByteStack(#getValue( #int128( DATA ))))
     rule #enc(#bytes32( DATA )) => #padToWidth(32, #asByteStack(#getValue(#bytes32( DATA ))))
@@ -158,6 +168,12 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
 
     rule #getValue(#uint256( DATA )) => DATA
       requires minUInt256 <=Int DATA andBool DATA <=Int maxUInt256
+
+    rule #getValue(  #uint48( DATA )) => DATA
+      requires minUInt48 <=Int DATA andBool DATA <=Int maxUInt48
+
+    rule #getValue(  #uint8( DATA )) => DATA
+      requires minUInt8 <=Int DATA andBool DATA <=Int maxUInt8
 
     rule #getValue( #int256( DATA )) => #unsigned(DATA)
       requires minSInt256 <=Int DATA andBool DATA <=Int maxSInt256
