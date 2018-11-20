@@ -827,7 +827,7 @@ module EVM-DATA-SYMBOLIC [symbolic]
                        | #bufSeg ( WordStack , Int , Int ) [function] // BUFFER, START, WIDTH
     syntax Int       ::= #bufElm ( WordStack , Int )       [function] // BUFFER, INDEX
 
-    syntax Bool ::= #isBuf ( WordStack ) [function]
+    syntax Bool ::= #isBuf ( WordStack ) [function, smtlib(isBuf)]
     rule #isBuf(#buf(_,_)) => true
     rule #isBuf(#bufSeg(_,_,_)) => true
 
