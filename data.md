@@ -874,7 +874,7 @@ module EVM-DATA-SYMBOLIC [symbolic]
 //  rule select(.IMap, _) => 0
 
 
-    syntax Bool ::= "#inKeys" "(" IMap "," Int ")" [function]
+    syntax Bool ::= "#inKeys" "(" IMap "," Int ")" [function, smtlib(inKeys)]
 
     rule #inKeys(.IMap, A) => false
     rule #inKeys(store(M, K, V), K0) => #inKeys(M, K0)
