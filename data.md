@@ -1,3 +1,62 @@
+IMap
+--------
+This module is probably better kept in domains.k, but we'll keep it here until https://github.com/kframework/k/pull/208 is resolved.
+We require entries have either provably distinct or provably equal keys in order to apply any rewrites. This conservative requirement forces us to be explicit about
+whether storage entries are distinct or not in our specs.
+```k
+requires "krypto.k"
+
+module IMAP-SYNTAX
+    imports INT
+    imports MAP
+    syntax IMap [smt-prelude] // (define-sort IMap () (Array Int Int))
+    syntax IMap ::= store  ( IMap , Int , Int ) [function, smtlib(store),  smt-prelude]
+    syntax Int  ::= select ( IMap , Int )       [function, smtlib(select), smt-prelude]
+    syntax IMap ::= Map
+    syntax IMap ::= ".IMap" [function]
+    syntax Bool ::= "#inKeys" "(" IMap "," Int ")" [function]
+endmodule
+    
+module IMAP-SYMBOLIC [symbolic]
+    imports IMAP-SYNTAX
+    rule .IMap => .Map
+
+    rule #inKeys(.IMap, A) => false
+    rule #inKeys(.Map, A) => false
+
+    rule #inKeys(store(M, K, V), K0) => #inKeys(M, K0)
+        requires K =/=Int K0
+
+    rule #inKeys(store(M, K, V), K0) => true
+        requires K ==Int K0
+    
+
+    rule select(store(M, K0, V), K) => V
+        requires K0  ==Int K
+        andBool notBool #inKeys(M, K)
+    
+    rule select(store(M, K0, V), K) => select(M, K)
+        requires K0 =/=Int K
+
+    //Reduces IMaps where multiple entries share the same key
+    rule store(store(M, K0, V0), K1, V1) => store(M, K0, V1)
+        requires K0 ==Int K1
+        andBool notBool #inKeys(M, K1)
+
+    rule store(store(M, K0, V0), K1, V1) => store(store(M, K1, V1), K0, V0)
+        requires K0 =/=Int K1
+        andBool #inKeys(M, K1)
+
+endmodule
+    
+module IMAP
+    imports IMAP-SYNTAX
+    imports IMAP-SYMBOLIC
+endmodule
+```
+
+
+
 EVM Words
 =========
 
@@ -8,14 +67,9 @@ Here we provide the arithmetic of these words, as well as some data-structures o
 Both are implemented using K's `Int`.
 
 ```k
-requires "krypto.k"
 
 module EVM-IMAP
     imports IMAP
-    imports MAP
-    syntax IMap ::= Map
-    syntax IMap ::= ".IMap" [function]
-    rule .IMap => .Map
 endmodule
 
 module EVM-DATA
@@ -872,24 +926,5 @@ module EVM-DATA-SYMBOLIC [symbolic]
 
     //  syntax IMap ::= ".IMap" [function, smtlib(emptyIMap), smt-prelude] // (define-fun emptyIMap () IMap ((as const IMap) 0))
 //  rule select(.IMap, _) => 0
-
-
-    syntax Bool ::= "#inKeys" "(" IMap "," Int ")" [function]
-
-    rule #inKeys(.IMap, A) => false
-    rule #inKeys(store(M, K, V), K0) => #inKeys(M, K0)
-        requires K =/=Int K0
-
-    rule #inKeys(store(M, K, V), K0) => true
-        requires K ==Int K0
-
-    //Reduces IMaps where multiple entries share the same key
-    rule store(store(M, K0, V0), K1, V1) => store(M, K0, V1)
-        requires K0 ==Int K1
-
-    rule store(store(M, K0, V0), K1, V1) => store(store(M, K1, V1), K0, V0)
-        requires K0 =/=Int K1
-        andBool #inKeys(M, K1)
-    
 endmodule
 ```
