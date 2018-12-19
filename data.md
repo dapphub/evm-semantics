@@ -33,7 +33,7 @@ module IMAP-SYMBOLIC [symbolic]
 
     rule select(store(M, K0, V), K) => V
         requires K0  ==Int K
-        andBool notBool #inKeys(M, K)
+//        andBool notBool #inKeys(M, K)
     
     rule select(store(M, K0, V), K) => select(M, K)
         requires K0 =/=Int K
@@ -41,7 +41,7 @@ module IMAP-SYMBOLIC [symbolic]
     //Reduces IMaps where multiple entries share the same key
     rule store(store(M, K0, V0), K1, V1) => store(M, K0, V1)
         requires K0 ==Int K1
-        andBool notBool #inKeys(M, K1)
+//        andBool notBool #inKeys(M, K1)
 
     rule store(store(M, K0, V0), K1, V1) => store(store(M, K1, V1), K0, V0)
         requires K0 =/=Int K1
