@@ -181,6 +181,13 @@ where `F1 : F2 : F3 : F4` is the (two's complement) byte-array representation of
     rule #getValue( #int128( DATA )) => #unsigned(DATA)
       requires minSInt128 <=Int DATA andBool DATA <=Int maxSInt128
 
+    rule #getValue( #int256( #signed(DATA) )) => DATA
+      requires minUInt256 <=Int DATA andBool DATA <=Int maxUInt256
+
+    rule #getValue( #int128( #signed(DATA) )) => DATA
+      requires minUInt128 <=Int DATA andBool DATA <=Int maxUInt128
+
+    
     rule #getValue(#bytes32( DATA )) => DATA
       requires minUInt256 <=Int DATA andBool DATA <=Int maxUInt256
 
