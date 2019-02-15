@@ -56,7 +56,7 @@ $(K_SUBMODULE)/make.timestamp:
 	@echo "== submodule: $@"
 	git submodule update --init --recursive -- $(K_SUBMODULE)
 	cd $(K_SUBMODULE) \
-	    && mvn package -q -DskipTests -U -Dllvm.backend.skip
+	    && mvn package -q -DskipTests -U -Dllvm.backend.skip -Dhaskell.backend.skip
 	touch $(K_SUBMODULE)/make.timestamp
 
 $(PANDOC_TANGLE_SUBMODULE)/make.timestamp:
