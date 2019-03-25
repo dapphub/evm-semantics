@@ -18,7 +18,7 @@ module KRYPTO
 
 ```k
     syntax String ::= Keccak256 ( String )                            [function, hook(KRYPTO.keccak256)]
-                    | ECDSARecover ( String , Int , String , String ) [function, hook(KRYPTO.ecdsaRecover)]
+                    | ECDSARecover ( String , Int , String , String ) [function, hook(KRYPTO.ecdsaRecover), smtlib(smt_ECDSARecover)]
                     | Sha256 ( String )                               [function, hook(KRYPTO.sha256)]
                     | RipEmd160 ( String )                            [function, hook(KRYPTO.ripemd160)]
  // ----------------------------------------------------------------------------------------------------
