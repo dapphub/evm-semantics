@@ -2009,7 +2009,7 @@ There are several helpers for calculating gas (most of them also specified in th
           => Cextra(SCHED, ISEMPTY, VALUE) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE)) ... </k>
 
     rule <k> Ccallgas(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, VALUE)
-          => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE)) +Int #if VALUE ==Int 0 #then 0 #else Gcallstipend < SCHED > #fi ... </k>
+          => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE)) +Int iF VALUE ==Int 0 tHen 0 eLse Gcallstipend < SCHED > fI ... </k>
 
     rule <k> Cselfdestruct(SCHED, ISEMPTY:Bool, BAL)
           => Gselfdestruct < SCHED > +Int Cnew(SCHED, ISEMPTY andBool Gselfdestructnewaccount << SCHED >>, BAL) ... </k>
@@ -2023,35 +2023,35 @@ There are several helpers for calculating gas (most of them also specified in th
                  | Cmem    ( Schedule , Int )             [function, memo]
  // ----------------------------------------------------------------------
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA)
-      => #if GAVAIL <Int GEXTRA orBool Gstaticcalldepth << SCHED >> #then GCAP #else minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) #fi  [concrete]
+      => iF GAVAIL <Int GEXTRA orBool Gstaticcalldepth << SCHED >> tHen GCAP eLse minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) fI  [concrete]
 
     rule Csstore(SCHED, NEW, CURR, ORIG)
-      => #if CURR ==Int NEW orBool ORIG =/=Int CURR #then Gsload < SCHED > #else #if ORIG ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi #fi
+      => iF CURR ==Int NEW orBool ORIG =/=Int CURR tHen Gsload < SCHED > eLse iF ORIG ==Int 0 tHen Gsstoreset < SCHED > eLse Gsstorereset < SCHED > fI fI
       requires Ghasdirtysstore << SCHED >>  [concrete]
     rule Csstore(SCHED, NEW, CURR, ORIG)
-      => #if CURR ==Int 0 andBool NEW =/=Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi
+      => iF CURR ==Int 0 andBool NEW =/=Int 0 tHen Gsstoreset < SCHED > eLse Gsstorereset < SCHED > fI
       requires notBool Ghasdirtysstore << SCHED >>  [concrete]
 
     rule Rsstore(SCHED, NEW, CURR, ORIG)
-      => #if CURR =/=Int NEW andBool ORIG ==Int CURR andBool NEW ==Int 0 #then
+      => iF CURR =/=Int NEW andBool ORIG ==Int CURR andBool NEW ==Int 0 tHen
              Rsstoreclear < SCHED >
-         #else
-             #if CURR =/=Int NEW andBool ORIG =/=Int CURR andBool ORIG =/=Int 0 #then
-                 #if CURR ==Int 0 #then 0 -Int Rsstoreclear < SCHED > #else #if NEW ==Int 0 #then Rsstoreclear < SCHED > #else 0 #fi #fi
-             #else
+         eLse
+             iF CURR =/=Int NEW andBool ORIG =/=Int CURR andBool ORIG =/=Int 0 tHen
+                 iF CURR ==Int 0 tHen 0 -Int Rsstoreclear < SCHED > eLse iF NEW ==Int 0 tHen Rsstoreclear < SCHED > eLse 0 fI fI
+             eLse
                  0
-             #fi +Int
-             #if CURR =/=Int NEW andBool ORIG ==Int NEW #then
-                 #if ORIG ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi -Int Gsload < SCHED >
-             #else
+             fI +Int
+             iF CURR =/=Int NEW andBool ORIG ==Int NEW tHen
+                 iF ORIG ==Int 0 tHen Gsstoreset < SCHED > eLse Gsstorereset < SCHED > fI -Int Gsload < SCHED >
+             eLse
                  0
-             #fi
-         #fi
+             fI
+         fI
       requires Ghasdirtysstore << SCHED >>
       [concrete]
 
     rule Rsstore(SCHED, NEW, CURR, ORIG)
-      => #if CURR =/=Int 0 andBool NEW ==Int 0 #then Rsstoreclear < SCHED > #else 0 #fi
+      => iF CURR =/=Int 0 andBool NEW ==Int 0 tHen Rsstoreclear < SCHED > eLse 0 fI
       requires notBool Ghasdirtysstore << SCHED >>
       [concrete]
 
@@ -2059,7 +2059,7 @@ There are several helpers for calculating gas (most of them also specified in th
       => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE)  [concrete]
 
     rule Cnew(SCHED, ISEMPTY:Bool, VALUE)
-      => #if ISEMPTY andBool (VALUE =/=Int 0 orBool Gzerovaluenewaccountgas << SCHED >>) #then Gnewaccount < SCHED > #else 0 #fi
+      => iF ISEMPTY andBool (VALUE =/=Int 0 orBool Gzerovaluenewaccountgas << SCHED >>) tHen Gnewaccount < SCHED > eLse 0 fI
 
     rule Cxfer(SCHED, 0) => 0
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=Int 0

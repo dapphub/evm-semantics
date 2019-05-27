@@ -832,5 +832,15 @@ Decoding
     rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
+
+
+    //Experimental, non-polymorphic #ite.
+    syntax Int ::= "iF" Bool "tHen" Int "eLse" Int "fI" [function]
+    rule iF A tHen B eLse C fI => B
+    requires A
+
+    rule iF A tHen B eLse C fI => C
+    requires notBool A
+
 endmodule
 ```
