@@ -117,6 +117,8 @@ repo-deps: tangle-deps k-deps plugin-deps
 k-deps: $(K_SUBMODULE)/make.timestamp
 tangle-deps: $(TANGLER)
 plugin-deps: $(PLUGIN_SUBMODULE)/make.timestamp
+BACKEND_SKIP=-Dhaskell.backend.skip -Dllvm.backend.skip
+
 
 ifneq ($(RELEASE),)
 K_BUILD_TYPE         := Release
@@ -129,7 +131,7 @@ endif
 
 $(K_SUBMODULE)/make.timestamp:
 	git submodule update --init --recursive -- $(K_SUBMODULE)
-	cd $(K_SUBMODULE) && mvn package -DskipTests -U -Dproject.build.type=${K_BUILD_TYPE}
+	cd $(K_SUBMODULE) && mvn package -DskipTests -U -Dproject.build.type=${K_BUILD_TYPE} $(BACKEND_SKIP)
 	touch $(K_SUBMODULE)/make.timestamp
 
 $(TANGLER):
