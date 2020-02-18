@@ -415,7 +415,6 @@ A cons-list is used for the EVM wordstack.
  // ----------------------------------------------------------------------------------------------------------------------------
     rule #sizeWordStack ( .WordStack ) => 0
     rule #sizeWordStack ( W : WS )     => #sizeWordStack(WS) +Int 1
-    rule #sizeWordStack ( WS ) >=Int 0 => true [smt-lemma]
 
     syntax Bool ::= Int "in" WordStack [function]
  // ---------------------------------------------
