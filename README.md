@@ -21,15 +21,18 @@ Repository Structure
 The following files constitute the KEVM semantics:
 
 -   [krypto.md](krypto.md) sets up some basic cryptographic primitives.
--   [data.md](data.md) provides the (functional) data of EVM (256 bit words, wordstacks, etc...).
 -   [network.md](network.md) provides the status codes which are reported to an Ethereum client on execution exceptions.
+-   [json.md](json.md) is an implementation of the JSON format in K.
+-   [evm-types.md](evm-types.md) provides the (functional) data of EVM (256 bit words, wordstacks, etc...).
+-   [serialization.md](serialization.md) provides helpers for parsing and unparsing data (hex strings, recursive-length prefix, merkle trees, etc.).
 -   [evm.md](evm.md) is the main KEVM semantics, containing the configuration and transition rules of EVM.
 
 These additional files extend the semantics to make the repository more useful:
 
--   [driver.md](driver.md) is an execution harness for KEVM, providing a simple language for describing tests/programs.
 -   [edsl.md](edsl.md) defines high-level notations of [eDSL], a domain-specific language for EVM specifications, for formal verification of EVM bytecode using [K Reachability Logic Prover].
--   [evm-node.md](evm-node.md) is the protobuf interface that an external Ethereum client can connect to for using KEVM as the execution engine.
+-   [state-loader.md](state-loader.md) provides common functionality between driver and web3 for EVM initialization and setup.
+-   [driver.md](driver.md) is an execution harness for KEVM, providing a simple language for describing tests/programs.
+-   [web3.md](web3.md) is a web3 rpc server.
 
 Installing/Building
 -------------------
@@ -49,16 +52,17 @@ The following are needed for building/running KEVM:
 -   GNU [libmpfr](http://www.mpfr.org/) and [libtool](https://www.gnu.org/software/libtool/).
 -   Java 8 JDK (eg. [OpenJDK](http://openjdk.java.net/))
 
+For the exact dependencies check the Dockerfile, but they should look something like this.
 On Ubuntu >= 18.04 (for example):
 
 ```sh
-sudo apt install                                                       \
-            autoconf bison clang++-8 clang-8 cmake curl flex gcc git   \
-            libboost-test-dev libgmp-dev libjemalloc-dev libmpfr-dev   \
-            libprocps-dev libprotobuf-dev libsecp256k1-dev libtool     \
-            libyaml-dev libz3-dev lld-8 llvm-8 llvm-8-tools make maven \
-            openjdk-11-jdk pandoc pkg-config protobuf-compiler z3      \
-            zlib1g-dev
+sudo apt-get install --yes                                                       \
+            autoconf bison clang-8 cmake curl flex gcc jq libboost-test-dev      \
+            libcrypto++-dev libffi-dev libgflags-dev libjemalloc-dev libmpfr-dev \
+            libprocps-dev libsecp256k1-dev libssl-dev libtool libyaml-dev        \
+            lld-8 llvm-8-tools make maven netcat-openbsd openjdk-11-jdk          \
+            pandoc pkg-config python3 python-pygments python-recommonmark        \
+            python-sphinx rapidjson-dev time zlib1g-dev
 ```
 
 On Ubuntu < 18.04, you'll need to skip `libsecp256k1-dev` and instead build it from source (via our `Makefile`):
@@ -103,39 +107,21 @@ export PATH=$HOME/.local/bin:$PATH
 
 ### Build K Dependency
 
-Get the submodules:
+The `Makefile` and `kevm` will work with either a (i) globally installed K, or (ii) the submodule built K.
+If you want to use the submodule, follow these instructions, then get the submodules and build the repository dependencies:
 
 ```sh
-git submodule update --init --recursive
-```
-
-And finally build the repository specific dependencies:
-
-```sh
-make RELEASE=1 deps
-```
-If you are a developer, you probably should omit `RELEASE` from the above commands unless you are testing performance, as the build is somewhat slower.
-
-On Arch, instead do:
-
-```sh
-make LIBFF_CC=clang LIBFF_CXX=clang++ RELEASE=1 deps
+git submodule update --init --recursive -- deps/k
+make deps
 ```
 
 ### Building
 
-Finally, you can install repository specific dependencies and build the semantics:
+Finally, you can build the semantics (after getting the plugin and tangle submodule dependencies):
 
 ```sh
-make build RELEASE=1
-```
-
-You can also build specific backends as so:
-
-```sh
-make build-haskell
-make build-llvm RELEASE=1
-make build-java
+git submodule update --init --recursive -- deps/plugin deps/pandoc-tangle
+make build
 ```
 
 Example Usage

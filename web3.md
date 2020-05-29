@@ -17,12 +17,14 @@ module WEB3
       <kevm-client>
         <kevm/>
         <json-rpc/>
-        <errorPC> 0 </errorPC>
         <blockchain>
           <blockList> .List </blockList>
         </blockchain>
-        <accountKeys> .Map </accountKeys>
-        <nextFilterSlot> 0 </nextFilterSlot>
+        <defaultGasPrice> 20000000000 </defaultGasPrice>
+        <defaultGasLimit> 90000       </defaultGasLimit>
+        <timeDiff>        0           </timeDiff> // Gets added to #time() when updating <timestamp>
+        <accountKeys>     .Map        </accountKeys>
+        <nextFilterSlot>  0           </nextFilterSlot>
         <txReceipts>
           <txReceipt multiplicity ="*" type="Map">
             <txHash>          "":String  </txHash>
@@ -45,7 +47,7 @@ module WEB3
           </filter>
         </filters>
         <snapshots> .List </snapshots>
-        <web3shutdownable> $SHUTDOWNABLE:Bool </web3shutdownable>
+        <web3shutdownable>  $SHUTDOWNABLE:Bool  </web3shutdownable>
         <web3notifications> $NOTIFICATIONS:Bool </web3notifications>
       </kevm-client>
 ```
@@ -68,6 +70,7 @@ The `blockList` cell stores a list of previous blocks and network states.
     rule <k> #pushBlockchainState => . ... </k>
          <blockList> (.List => ListItem({ <network> NETWORK </network> | <block> BLOCK </block> })) ... </blockList>
          <network> NETWORK </network>
+         <blockhashes> (.List => ListItem(#blockchainItemHash({ <network> NETWORK </network> | <block> BLOCK </block> }))) ... </blockhashes>
          <block>   BLOCK   </block>
 
     syntax BlockchainItem ::= #getBlockByNumber ( BlockIdentifier , List , BlockchainItem ) [function]
@@ -75,7 +78,7 @@ The `blockList` cell stores a list of previous blocks and network states.
     rule #getBlockByNumber( _:Int            , .List                 , _     ) => .BlockchainItem
     rule #getBlockByNumber( LATEST           , .List                 , BLOCK ) => BLOCK
     rule #getBlockByNumber( LATEST           ,   ListItem( BLOCK ) _ , _     ) => BLOCK
-    rule #getBlockByNumber( PENDING          , _                     , BLOCK ) => BLOCK
+    rule #getBlockByNumber( PENDING => LATEST, _                     , _     )
     rule #getBlockByNumber( EARLIEST         , .List                 , BLOCK ) => BLOCK
     rule #getBlockByNumber( EARLIEST         , _ ListItem( BLOCK )   , _     ) => BLOCK
 
@@ -138,13 +141,11 @@ WEB3 JSON RPC
     syntax EthereumSimulation ::= accept() [symbol]
  // -----------------------------------------------
     rule <k> accept() => getRequest() ... </k>
-         <web3socket> SOCK </web3socket>
-         <web3clientsocket> _ => #accept(SOCK) </web3clientsocket>
 
     syntax KItem ::= getRequest()
  // -----------------------------
-    rule <k> getRequest() => #loadRPCCall(#getRequest(SOCK)) ... </k>
-         <web3clientsocket> SOCK </web3clientsocket>
+    rule <k> getRequest() => #loadRPCCall(#getRequest(FD)) ... </k>
+         <web3input> FD </web3input>
          <batch> _ => undef </batch>
 
     syntax IOJSON ::= #getRequest(Int) [function, hook(JSON.read)]
@@ -164,8 +165,7 @@ WEB3 JSON RPC
          <method>  _ => #getJSON("method" , J) </method>
          <params>  _ => #getJSON("params" , J) </params>
 
-    rule <k> #loadRPCCall(#EOF) => #shutdownWrite(SOCK) ~> #close(SOCK) ~> accept() ... </k>
-         <web3clientsocket> SOCK </web3clientsocket>
+    rule <k> #loadRPCCall(#EOF) => accept() ... </k>
 
     rule <k> #loadRPCCall([ _, _ ] #as J) => #loadFromBatch ... </k>
          <batch> _ => J </batch>
@@ -182,9 +182,9 @@ WEB3 JSON RPC
     rule <k> #loadFromBatch ~> _ => #loadRPCCall(J) </k>
          <batch> [ J , JS => JS ] </batch>
 
-    rule <k> #loadFromBatch ~> _ => #putResponse(List2JSON(RESPONSE), SOCK) ~> getRequest() </k>
+    rule <k> #loadFromBatch ~> _ => #putResponse(List2JSON(RESPONSE), FD) ~> getRequest() </k>
          <batch> [ .JSONs ] </batch>
-         <web3clientsocket> SOCK </web3clientsocket>
+         <web3output> FD </web3output>
          <web3response> RESPONSE </web3response>
       requires size(RESPONSE) >Int 0
 
@@ -202,15 +202,15 @@ WEB3 JSON RPC
 
     syntax KItem ::= #sendResponse ( JSONs )
  // ----------------------------------------
-    rule <k> #sendResponse(J) ~> _ => #putResponse({ "jsonrpc": "2.0", "id": CALLID, J }, SOCK) ~> getRequest() </k>
-         <callid>            CALLID </callid>
-         <web3clientsocket>  SOCK   </web3clientsocket>
-         <batch>             undef  </batch>
+    rule <k> #sendResponse(J) ~> _ => #putResponse({ "jsonrpc": "2.0", "id": CALLID, J }, FD) ~> getRequest() </k>
+         <callid>     CALLID </callid>
+         <web3output> FD     </web3output>
+         <batch>      undef  </batch>
       requires CALLID =/=K undef
 
-    rule <k> #sendResponse(J) ~> _ => #putResponse({ "jsonrpc": "2.0", J }, SOCK) ~> getRequest() </k>
+    rule <k> #sendResponse(J) ~> _ => #putResponse({ "jsonrpc": "2.0", J }, FD) ~> getRequest() </k>
          <callid>            undef </callid>
-         <web3clientsocket>  SOCK  </web3clientsocket>
+         <web3output>        FD    </web3output>
          <batch>             undef </batch>
          <web3notifications> true  </web3notifications>
 
@@ -328,9 +328,10 @@ WEB3 JSON RPC
     rule <k> #runRPCCall => #firefly_setTime                         ... </k> <method> "firefly_setTime"                         </method>
     rule <k> #runRPCCall => #firefly_genesisBlock                    ... </k> <method> "firefly_genesisBlock"                    </method>
     rule <k> #runRPCCall => #firefly_setGasLimit                     ... </k> <method> "firefly_setGasLimit"                     </method>
+    rule <k> #runRPCCall => #firefly_setGasPrice                     ... </k> <method> "firefly_setGasPrice"                     </method>
+    rule <k> #runRPCCall => #firefly_setNetworkId                    ... </k> <method> "firefly_setNetworkId"                    </method>
     rule <k> #runRPCCall => #firefly_blake2compress                  ... </k> <method> "firefly_blake2compress"                  </method>
 
-    rule <k> #runRPCCall => #debug_traceTransaction                  ... </k> <method> "debug_traceTransaction"                  </method>
     rule <k> #runRPCCall => #miner_start                             ... </k> <method> "miner_start"                             </method>
     rule <k> #runRPCCall => #miner_stop                              ... </k> <method> "miner_stop"                              </method>
     rule <k> #runRPCCall => #personal_importRawKey                   ... </k> <method> "personal_importRawKey"                   </method>
@@ -344,10 +345,10 @@ WEB3 JSON RPC
 
     syntax KItem ::= "#firefly_shutdown"
  // ------------------------------------
-    rule <k> #firefly_shutdown ~> _ => #putResponse({ "jsonrpc": "2.0" , "id": CALLID , "result": "Firefly client shutting down!" }, SOCK) </k>
+    rule <k> #firefly_shutdown ~> _ => #putResponse({ "jsonrpc": "2.0" , "id": CALLID , "result": "Firefly client shutting down!" }, FD) </k>
          <web3shutdownable> true </web3shutdownable>
          <callid> CALLID </callid>
-         <web3clientsocket> SOCK </web3clientsocket>
+         <web3output> FD </web3output>
          <exit-code> _ => 0 </exit-code>
 
     rule <k> #firefly_shutdown => #rpcResponseError(-32800, "Firefly client not started with `--shutdownable`!") ... </k>
@@ -369,7 +370,7 @@ WEB3 JSON RPC
 
     syntax KItem ::= "#eth_blockNumber"
  // -----------------------------------
-    rule <k> #eth_blockNumber => #rpcResponseSuccess(#unparseQuantity( BLOCKNUM )) ... </k>
+    rule <k> #eth_blockNumber => #rpcResponseSuccess(#unparseQuantity( BLOCKNUM -Int 1 )) ... </k>
          <number> BLOCKNUM </number>
 
     syntax KItem ::= "#eth_accounts"
@@ -474,8 +475,8 @@ WEB3 JSON RPC
  // ----------------------------------------------------
     rule #hashMessage( S ) => #unparseByteStack(#parseHexBytes(Keccak256("\x19Ethereum Signed Message:\n" +String Int2String(lengthString(S)) +String S)))
 
-    syntax SnapshotItem ::= "{" BlockListCell "|" NetworkCell "|" BlockCell "|" TxReceiptsCell "}"
- // ----------------------------------------------------------------------------------------------
+    syntax SnapshotItem ::= "{" BlockListCell "|" NetworkCell "|" BlockCell "|" TxReceiptsCell "|" Int "}"
+ // ------------------------------------------------------------------------------------------------------
 
     syntax KItem ::= "#evm_snapshot"
  // --------------------------------
@@ -485,26 +486,37 @@ WEB3 JSON RPC
     syntax KItem ::= "#pushNetworkState"
  // ------------------------------------
     rule <k> #pushNetworkState => . ... </k>
-         <snapshots> ... (.List => ListItem({ <blockList> BLOCKLIST </blockList> | <network> NETWORK </network> | <block> BLOCK </block> | <txReceipts> RECEIPTS </txReceipts>})) </snapshots>
+         <snapshots> ... (.List => ListItem({ <blockList> BLOCKLIST </blockList> | <network> NETWORK </network> | <block> BLOCK </block> | <txReceipts> RECEIPTS </txReceipts> | TIMEDIFF })) </snapshots>
          <network>    NETWORK   </network>
          <block>      BLOCK     </block>
          <blockList>  BLOCKLIST </blockList>
+         <timeDiff>   TIMEDIFF  </timeDiff>
          <txReceipts> RECEIPTS  </txReceipts>
 
     syntax KItem ::= "#popNetworkState"
  // -----------------------------------
     rule <k> #popNetworkState => . ... </k>
-         <snapshots> ... ( ListItem({ <blockList> BLOCKLIST </blockList> | <network> NETWORK </network> | <block> BLOCK </block> | <txReceipts> RECEIPTS </txReceipts>}) => .List ) </snapshots>
-         <network>    ( _ => NETWORK )   </network>
-         <block>      ( _ => BLOCK )     </block>
-         <blockList>  ( _ => BLOCKLIST ) </blockList>
-         <txReceipts> ( _ => RECEIPTS )  </txReceipts>
+         <snapshots> ... ( ListItem({ <blockList> BLOCKLIST </blockList> | <network> NETWORK </network> | <block> BLOCK </block> | <txReceipts> RECEIPTS </txReceipts> | TIMEDIFF }) => .List ) </snapshots>
+         <network>     _ => NETWORK                        </network>
+         <blockhashes> _ => #getBlockhashlist( BLOCKLIST ) </blockhashes>
+         <block>       _ => BLOCK                          </block>
+         <blockList>   _ => BLOCKLIST                      </blockList>
+         <timeDiff>    _ => TIMEDIFF                       </timeDiff>
+         <txReceipts>  _ => RECEIPTS                       </txReceipts>
+
+    syntax List ::= #getBlockhashlist( List )            [function]
+                  | #getBlockhashlistFromParents( List ) [function]
+ // ---------------------------------------------------------------
+    rule #getBlockhashlist( .List ) => .List
+    rule #getBlockhashlist( (ListItem( BLOCK ) REST) #as BLOCKLIST ) => ListItem(#blockchainItemHash(BLOCK)) #getBlockhashlistFromParents(BLOCKLIST)
+    rule #getBlockhashlistFromParents( .List ) => .List
+    rule #getBlockhashlistFromParents( ListItem( { _ | <block> <previousHash> HP </previousHash> ... </block> } ) REST ) => ListItem(HP) #getBlockhashlistFromParents(REST)
 
     syntax KItem ::= "#evm_revert"
  // ------------------------------
     rule <k> #evm_revert => #popNetworkState ~> #rpcResponseSuccess(true) ... </k>
-         <params>    [ DATA:Int, .JSONs ] </params>
-         <snapshots> SNAPSHOTS            </snapshots>
+         <params>       [ DATA:Int, .JSONs ] </params>
+         <snapshots>    SNAPSHOTS            </snapshots>
       requires DATA ==Int size(SNAPSHOTS)
 
     rule <k> #evm_revert ... </k>
@@ -525,9 +537,9 @@ WEB3 JSON RPC
     rule <k> #evm_increaseTime ... </k>
          <params> [ (null => 0), .JSONs ] </params>
 
-    rule <k> #evm_increaseTime => #rpcResponseSuccess(Int2String(TS +Int DATA)) ... </k>
-         <params>    [ DATA:Int, .JSONs ]           </params>
-         <timestamp> ( TS:Int => ( TS +Int DATA ) ) </timestamp>
+    rule <k> #evm_increaseTime => #rpcResponseSuccess(Int2String(TIMEDIFF +Int DATA)) ... </k>
+         <params>   [ DATA:Int, .JSONs ]           </params>
+         <timeDiff> TIMEDIFF => TIMEDIFF +Int DATA </timeDiff>
 
     syntax KItem ::= "#eth_newBlockFilter"
  // --------------------------------------
@@ -606,7 +618,7 @@ eth_sendTransaction
          </k>
          <statusCode> EVMC_REVERT </statusCode>
          <output> RD </output>
-         <errorPC> PCOUNT </errorPC>
+         <endPC> PCOUNT </endPC>
 
     rule <k> _:String ~> #eth_sendTransaction_final => #rpcResponseError(-32000, "base fee exceeds gas limit") ... </k>
          <statusCode> EVMC_OUT_OF_GAS </statusCode>
@@ -617,18 +629,38 @@ eth_sendTransaction
     rule <k> _:String ~> #eth_sendTransaction_final => #rpcResponseError(-32000, "VM exception: " +String StatusCode2String( SC )) ... </k>
          <statusCode> SC:ExceptionalStatusCode </statusCode> [owise]
 
-    rule <k> loadTransaction _ { "gas"      : (TG:String => #parseHexWord(TG)), _                 } ... </k>
-    rule <k> loadTransaction _ { "gasPrice" : (TP:String => #parseHexWord(TP)), _                 } ... </k>
-    rule <k> loadTransaction _ { "nonce"    : (TN:String => #parseHexWord(TN)), _                 } ... </k>
-    rule <k> loadTransaction _ { "v"        : (TW:String => #parseHexWord(TW)), _                 } ... </k>
-    rule <k> loadTransaction _ { "value"    : (TV:String => #parseHexWord(TV)), _                 } ... </k>
-    rule <k> loadTransaction _ { "to"       : (TT:String => #parseHexWord(TT)), _                 } ... </k> requires TT =/=String ""
-    rule <k> loadTransaction _ { "to"       : ""                              , REST => REST      } ... </k>
-    rule <k> loadTransaction _ { "data"     : (TI:String => #parseByteStack(TI)), _               } ... </k>
+    rule <k> loadTransaction _ { "gas"      : (TG:String => #parseHexWord(TG)), _                    } ... </k>
+    rule <k> loadTransaction _ { "gasPrice" : (TP:String => #parseHexWord(TP)), _                    } ... </k>
+    rule <k> loadTransaction _ { "nonce"    : (TN:String => #parseHexWord(TN)), _                    } ... </k>
+    rule <k> loadTransaction _ { "v"        : (TW:String => #parseHexWord(TW)), _                    } ... </k>
+    rule <k> loadTransaction _ { "value"    : (TV:String => #parseHexWord(TV)), _                    } ... </k>
+    rule <k> loadTransaction _ { "to"       : (TT:String => #parseHexWord(TT)), _                    } ... </k> requires TT =/=String ""
+    rule <k> loadTransaction _ { "to"       : ""                              , REST => REST         } ... </k>
+    rule <k> loadTransaction _ { "data"     : (TI:String => #parseByteStack(TI)), _                  } ... </k>
     rule <k> loadTransaction _ { "r"        : (TR:String => #padToWidth(32, #parseByteStack(TR))), _ } ... </k>
     rule <k> loadTransaction _ { "s"        : (TS:String => #padToWidth(32, #parseByteStack(TS))), _ } ... </k>
-    rule <k> loadTransaction _ { ("from"    : _, REST => REST) } ... </k>
-    rule <k> loadTransaction _ { (("amount" : TV) => "value": TV), REST                  } ... </k>
+    rule <k> loadTransaction _ { ("from"    : _, REST => REST)                                       } ... </k>
+    rule <k> loadTransaction _ { (("amount" : TV) => "value": TV)             , REST                 } ... </k>
+    rule <k> loadTransaction _ { _          : _                               , REST => REST         } ... </k> [owise]
+
+    syntax EthereumCommand ::= "makeTX" Int
+ // ---------------------------------------
+    rule <k> makeTX TXID => . ... </k>
+         <txOrder>   ... (.List => ListItem(TXID)) </txOrder>
+         <txPending> ... (.List => ListItem(TXID)) </txPending>
+         <defaultGasPrice> GPRICE </defaultGasPrice>
+         <defaultGasLimit> GLIMIT </defaultGasLimit>
+         <messages>
+            ( .Bag
+           => <message>
+                <msgID>      TXID:Int </msgID>
+                <txGasPrice> GPRICE   </txGasPrice>
+                <txGasLimit> GLIMIT   </txGasLimit>
+                ...
+              </message>
+            )
+          ...
+          </messages>
 
     syntax KItem ::= "#loadNonce" Int Int
  // -------------------------------------
@@ -648,16 +680,14 @@ eth_sendTransaction
 
     syntax JSON ::= #generateException( String, Int, Bytes, EndStatusCode ) [function]
  // ----------------------------------------------------------------------------------
-    rule #generateException(TXHASH, PCOUNT, RD, SC) => { "message": "VM Exception while processing transaction: " +String StatusCode2TruffleString(SC),
+    rule #generateException(TXHASH, PCOUNT, RD, SC) => { "message": "VM Exception while processing transaction: " +String StatusCode2TruffleString(SC) +String " " +String #parseReason(RD),
                                                       "code": -32000,
                                                       "data": {
                                                           TXHASH: {
                                                           "error": StatusCode2TruffleString(SC),
                                                           "program_counter": PCOUNT +Int 1,
                                                           "return": #unparseDataByteArray( RD ),
-                                                          "reason": Bytes2String(substrBytes(RD,
-                                                                                             36 +Int #asInteger(substrBytes(RD,5,36)),
-                                                                                             36 +Int #asInteger(substrBytes(RD,5,36)) +Int #asInteger(substrBytes(RD,37,68))))
+                                                          "reason": #parseReason(RD)
                                                         }
                                                       }
                                                     }
@@ -674,6 +704,11 @@ eth_sendTransaction
                                                     }
       requires notBool lengthBytes(RD) >Int 68
 
+    syntax String ::= #parseReason ( Bytes ) [function]
+ // ---------------------------------------------------
+    rule #parseReason(RD) => Bytes2String(substrBytes(RD,
+                              36 +Int #asInteger(substrBytes(RD,5,36)),
+                              36 +Int #asInteger(substrBytes(RD,5,36)) +Int #asInteger(substrBytes(RD,37,68))))
 ```
 
 -   signTX TXID ACCTFROM: Signs the transaction with TXID using ACCTFROM's private key
@@ -740,7 +775,7 @@ eth_sendRawTransaction
     rule <k> #eth_sendRawTransaction => #rpcResponseError(-32000, "Invalid Signature") ... </k> [owise]
 
     rule <k> #eth_sendRawTransactionLoad
-          => mkTX !ID:Int
+          => makeTX !ID:Int
           ~> loadTransaction !ID { "data"  : Raw2Hex(TI)  , "gas"      : Raw2Hex(TG) , "gasPrice" : Raw2Hex(TP)
                                  , "nonce" : Raw2Hex(TN)  , "r"        : Raw2Hex(TR) , "s"        : Raw2Hex(TS)
                                  , "to"    : Raw2Hex'(TT) , "v"        : Raw2Hex(TW) , "value"    : Raw2Hex(TV)
@@ -754,10 +789,11 @@ eth_sendRawTransaction
     rule <k> #eth_sendRawTransactionLoad => #rpcResponseError(-32000, "Invalid Signature") ... </k> [owise]
 
     rule <k> #eth_sendRawTransactionVerify TXID
-          => #prepareTx TXID #sender(TN, TP, TG, TT, TV, #unparseByteStack(TD), TW, TR, TS)
+          => #prepareTx TXID #sender(TN, TP, TG, TT, TV, #unparseByteStack(TD), TW, TR, TS, CID)
           ~> #eth_sendRawTransactionSend TXID
          ...
          </k>
+         <chainID> CID </chainID>
          <message>
            <msgID> TXID </msgID>
            <txNonce>    TN </txNonce>
@@ -770,9 +806,12 @@ eth_sendRawTransaction
            <sigR>       TR </sigR>
            <sigS>       TS </sigS>
          </message>
-      requires ECDSARecover( Hex2Raw( #hashUnsignedTx(TN, TP, TG, TT, TV, TD) ), TW, #unparseByteStack(TR), #unparseByteStack(TS) ) =/=String ""
+      requires #sender(TN, TP, TG, TT, TV, #unparseByteStack(TD), TW, TR, TS, CID) =/=K .Account
 
-    rule <k> #eth_sendRawTransactionVerify _ => #rpcResponseError(-32000, "Invalid Signature") ... </k> [owise]
+    rule <k> #eth_sendRawTransactionVerify TXID => #rpcResponseError(-32000, "Invalid Signature") ... </k>
+         <txOrder> ListItem(TXID) => .List ... </txOrder>
+         <txPending> ListItem(TXID) => .List ... </txPending>
+         <messages> ( <message> <msgID> TXID </msgID> ... </message> => .Bag ) ... </messages> [owise]
 
     rule <k> #eth_sendRawTransactionSend TXID => #rpcResponseSuccess("0x" +String #hashSignedTx(TN, TP, TG, TT, TV, TD, TW, TR, TS)) ... </k>
          <message>
@@ -810,6 +849,9 @@ Retrieving Blocks
 ```k
     syntax KItem ::= "#eth_getBlockByNumber"
  // ----------------------------------------
+    rule <k> #eth_getBlockByNumber ... </k>
+         <params> [ (null => "0x0"), _:Bool, .JSONs ] </params>
+
     rule <k> #eth_getBlockByNumber => #eth_getBlockByNumber_finalize( #getBlockByNumber(#parseBlockIdentifier(TAG), BLOCKLIST, {<network> NETWORK </network> | <block> BLOCK </block>})) ... </k>
          <params> [ TAG:String, TXOUT:Bool, .JSONs ] </params>
          <blockList> BLOCKLIST </blockList>
@@ -904,9 +946,18 @@ Transaction Receipts
     -   the status code of the transaction.
 
 ```k
+    syntax KItem ::= "#makeTxReceipts"
+                   | "#makeTxReceiptsAux" List
+ // ------------------------------------------
+    rule <k> #makeTxReceipts => #makeTxReceiptsAux TXLIST ... </k>
+         <txOrder> TXLIST </txOrder>
+    rule <k> #makeTxReceiptsAux .List => . ... </k>
+    rule <k> #makeTxReceiptsAux (ListItem(TXID) TXLIST) => #makeTxReceipt TXID ~> #makeTxReceiptsAux TXLIST ... </k>
+
     syntax KItem ::= "#makeTxReceipt" Int
  // -------------------------------------
     rule <k> #makeTxReceipt TXID => . ... </k>
+         <chainID> CID </chainID>
          <txReceipts>
            ( .Bag
           => <txReceipt>
@@ -916,8 +967,8 @@ Transaction Receipts
                <bloomFilter> #bloomFilter(LOGS) </bloomFilter>
                <txStatus> bool2Word(STATUSCODE ==K EVMC_SUCCESS) </txStatus>
                <txID> TXID </txID>
-               <sender> #parseHexWord(#unparseDataByteArray(#ecrecAddr(#sender(TN, TP, TG, TT, TV, #unparseByteStack(TD), TW , TR, TS)))) </sender>
-               <txBlockNumber> BN +Int 1 </txBlockNumber>
+               <sender> #parseHexWord(#unparseDataByteArray(#ecrecAddr(#sender(TN, TP, TG, TT, TV, #unparseByteStack(TD), TW , TR, TS, CID)))) </sender>
+               <txBlockNumber> BN </txBlockNumber>
              </txReceipt>
            )
            ...
@@ -1133,7 +1184,7 @@ Transaction Receipts
 
     rule <k> loadCallState TXID:Int
           => loadCallState {
-               "from":     #unparseDataByteArray(#ecrecAddr(#sender(TN, TP, TG, TT, TV, #unparseByteStack(DATA), TW , TR, TS))),
+               "from":     #unparseDataByteArray(#ecrecAddr(#sender(TN, TP, TG, TT, TV, #unparseByteStack(DATA), TW , TR, TS, CID))),
                "to":       TT,
                "gas":      TG,
                "gasPrice": TP,
@@ -1142,6 +1193,7 @@ Transaction Receipts
              }
          ...
          </k>
+         <chainID> CID </chainID>
          <message>
            <msgID>      TXID </msgID>
            <txNonce>    TN   </txNonce>
@@ -1173,7 +1225,7 @@ Transaction Execution
     syntax KItem ::= "#loadTx" Account JSON
  // ---------------------------------------
     rule <k> #loadTx ACCTFROM J
-          => mkTX !ID:Int
+          => makeTX !ID:Int
           ~> #loadNonce ACCTFROM !ID
           ~> loadTransaction !ID J
           ~> signTX !ID ACCTFROM
@@ -1205,7 +1257,7 @@ Transaction Execution
          </message>
       requires ( GLIMIT -Int G0(SCHED, DATA, (ACCTTO ==K .Account)) ) <Int 0
 
-    rule <k> #validateTx TXID => #executeTx TXID ~> #makeTxReceipt TXID ~> #finishTx ... </k>
+    rule <k> #validateTx TXID => #updateTimestamp ~> #executeTx TXID ~> #mineAndUpdate ... </k>
          <schedule> SCHED </schedule>
          <callGas> _ => GLIMIT -Int G0(SCHED, DATA, (ACCTTO ==K .Account) ) </callGas>
          <message>
@@ -1221,7 +1273,7 @@ Transaction Execution
  // ---------------------------------
     rule <k> #executeTx TXID:Int
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) VALUE CODE
-          ~> #catchHaltTx #newAddr(ACCTFROM, NONCE)
+          ~> #finishTx
           ~> #finalizeTx(false)
          ...
          </k>
@@ -1249,7 +1301,7 @@ Transaction Execution
 
     rule <k> #executeTx TXID:Int
           => #call ACCTFROM ACCTTO ACCTTO VALUE VALUE DATA false
-          ~> #catchHaltTx .Account
+          ~> #finishTx
           ~> #finalizeTx(false)
          ...
          </k>
@@ -1276,33 +1328,42 @@ Transaction Execution
          <touchedAccounts> _ => SetItem(MINER) </touchedAccounts>
       requires ACCTTO =/=K .Account
 
-    syntax KItem ::= "#finishTx"
- // ----------------------------
+    syntax EthereumCommand ::= "#finishTx"
+ // --------------------------------------
+    rule <statusCode> _:ExceptionalStatusCode </statusCode> <k> #halt ~> #finishTx => #popCallStack ~> #popWorldState                   ... </k>
+    rule <statusCode> EVMC_REVERT             </statusCode> <k> #halt ~> #finishTx => #popCallStack ~> #popWorldState ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>
+
+    rule <statusCode> EVMC_SUCCESS </statusCode>
+         <k> #halt ~> #finishTx => #mkCodeDeposit ACCT ... </k>
+         <id> ACCT </id>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID> TXID     </msgID>
+           <to>    .Account </to>
+           ...
+         </message>
+
+    rule <statusCode> EVMC_SUCCESS </statusCode>
+         <k> #halt ~> #finishTx => #popCallStack ~> #dropWorldState ~> #refund GAVAIL ... </k>
+         <id> ACCT </id>
+         <gas> GAVAIL </gas>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID> TXID </msgID>
+           <to>    TT   </to>
+           ...
+         </message>
+      requires TT =/=K .Account
+
+    syntax KItem ::= "#mineAndUpdate"
+ // ---------------------------------
     rule <statusCode> STATUSCODE </statusCode>
-         <k> #finishTx => #mineBlock ~> #updateTimestamp ... </k>
+         <k> #mineAndUpdate => #mineBlock ... </k>
          <mode> EXECMODE </mode>
       requires EXECMODE =/=K NOGAS
        andBool ( STATUSCODE ==K EVMC_SUCCESS orBool STATUSCODE ==K EVMC_REVERT )
 
-    rule <k> #finishTx => #clearGas ... </k> [owise]
-
-    syntax KItem ::= "#catchHaltTx" Account
- // ---------------------------------------
-    rule <statusCode> _:ExceptionalStatusCode </statusCode>
-         <k> #halt ~> #catchHaltTx _ => #popCallStack ~> #popWorldState ... </k>
-
-    rule <statusCode> EVMC_REVERT </statusCode>
-         <k> #halt ~> #catchHaltTx _ => #popCallStack ~> #popWorldState ~> #refund GAVAIL ... </k>
-         <pc> PCOUNT </pc>
-         <gas> GAVAIL </gas>
-         <errorPC> _ => PCOUNT </errorPC>
-
-    rule <statusCode> EVMC_SUCCESS </statusCode>
-         <k> #halt ~> #catchHaltTx .Account => . ... </k>
-
-    rule <statusCode> EVMC_SUCCESS </statusCode>
-         <k> #halt ~> #catchHaltTx ACCT => #mkCodeDeposit ACCT ... </k>
-      requires ACCT =/=K .Account
+    rule <k> #mineAndUpdate => #clearGas ... </k> [owise]
 
     syntax KItem ::= "#clearLogs"
  // -----------------------------
@@ -1419,7 +1480,7 @@ Transaction Execution
                                PCOUNT, RD, SC))
           ...
          </k>
-         <errorPC> PCOUNT </errorPC>
+         <endPC>   PCOUNT </endPC>
          <output>  RD     </output>
          <message>
            <msgID>      TXID </msgID>
@@ -1497,7 +1558,7 @@ NOGAS Mode
          <mode> NOGAS </mode>
      [priority(25)]
 
-    rule <k> #validateTx TXID => #executeTx TXID ~> #makeTxReceipt TXID ~> #finishTx ... </k>
+    rule <k> #validateTx TXID => #updateTimestamp ~> #executeTx TXID ~> #mineAndUpdate ... </k>
          <mode> NOGAS </mode>
      [priority(25)]
 
@@ -1670,7 +1731,7 @@ Timestamp Calls
  // -----------------------------------
     rule <k> #firefly_setTime => #rpcResponseSuccess(true) ... </k>
          <params> [ TIME:String, .JSONs ] </params>
-         <timestamp> _ => #parseHexWord( TIME ) </timestamp>
+         <timeDiff> _ => #parseHexWord( TIME ) -Int #time() </timeDiff>
 
     rule <k> #firefly_setTime => #rpcResponseSuccess(false) ... </k> [owise]
 ```
@@ -1681,15 +1742,48 @@ Gas Limit Call
 ```k
     syntax KItem ::= "#firefly_setGasLimit"
  // ---------------------------------------
-    rule <k> #firefly_setGasLimit => #rpcResponseSuccess(true) ... </k>
-         <params> [ GLIMIT:String, .JSONs ] </params>
-         <gasLimit> _ => #parseWord( GLIMIT ) </gasLimit>
+    rule <k> #firefly_setGasLimit ... </k>
+         <params> [ GLIMIT:String => #parseWord( GLIMIT ), .JSONs ] </params>
 
     rule <k> #firefly_setGasLimit => #rpcResponseSuccess(true) ... </k>
-         <params> [ GLIMIT:Int, .JSONs ] </params>
-         <gasLimit> _ => GLIMIT </gasLimit>
+         <params>          [ GLIMIT:Int, .JSONs ] </params>
+         <gasLimit>        _ => GLIMIT            </gasLimit>
+         <defaultGasLimit> _ => GLIMIT            </defaultGasLimit>
 
     rule <k> #firefly_setGasLimit => #rpcResponseError(-32000, "firefly_setGasLimit requires exactly 1 argument") ... </k> [owise]
+```
+
+Gas Price Call
+--------------
+
+```k
+    syntax KItem ::= "#firefly_setGasPrice"
+ // ---------------------------------------
+    rule <k> #firefly_setGasPrice ... </k>
+         <params> [ GPRICE:String => #parseWord( GPRICE ), .JSONs ] </params>
+
+    rule <k> #firefly_setGasPrice => #rpcResponseSuccess(true) ... </k>
+         <params>          [ GPRICE:Int, .JSONs ] </params>
+         <gasPrice>        _ => GPRICE            </gasPrice>
+         <defaultGasPrice> _ => GPRICE            </defaultGasPrice>
+
+    rule <k> #firefly_setGasPrice => #rpcResponseError(-32000, "firefly_setGasPrice requires exactly 1 argument") ... </k> [owise]
+```
+
+Network Id
+----------
+
+```k
+    syntax KItem ::= "#firefly_setNetworkId"
+ // ----------------------------------------
+    rule <k> #firefly_setNetworkId ... </k>
+         <params> [ VALUE:String => #parseWord( VALUE ), .JSONs ] </params>
+
+    rule <k> #firefly_setNetworkId => #rpcResponseSuccess(true) ... </k>
+         <params>          [ VALUE:Int, .JSONs ] </params>
+         <chainID>        _ => VALUE            </chainID>
+
+    rule <k> #firefly_setNetworkId => #rpcResponseError(-32000, "firefly_setNetworkId requires exactly 1 argument") ... </k> [owise]
 ```
 
 Mining
@@ -1698,11 +1792,12 @@ Mining
 ```k
     syntax KItem ::= "#evm_mine"
  // ----------------------------
-    rule <k> #evm_mine => #mineBlock ~> #rpcResponseSuccess("0x0") ... </k> [owise]
+    rule <k> #evm_mine => #updateTimestamp ~> #mineBlock ~> #rpcResponseSuccess("0x0") ... </k> [owise]
 
     rule <k> #evm_mine => #mineBlock ~> #rpcResponseSuccess("0x0") ... </k>
-         <params>    [ TIME:String, .JSONs ] </params>
-         <timestamp> _ => #parseWord( TIME ) </timestamp>
+         <params>    [ TIME:String, .JSONs ]              </params>
+         <timestamp> _ => #parseWord( TIME )              </timestamp>
+         <timeDiff>  _ => #parseWord( TIME ) -Int #time() </timeDiff>
 
     rule <k> #evm_mine => #rpcResponseError(-32000, "Incorrect number of arguments. Method 'evm_mine' requires between 0 and 1 arguments.") ... </k>
          <params> [ _ , _ , _:JSONs ] </params>
@@ -1712,17 +1807,19 @@ Mining
     rule <k> #firefly_genesisBlock ... </k>
          <params> [ .JSONs => #unparseQuantity(#time()), .JSONs ] </params>
 
-    rule <k> #firefly_genesisBlock => #updateTrieRoots ~> #pushBlockchainState ~> #rpcResponseSuccess(true) ... </k>
+    rule <k> #firefly_genesisBlock => #updateTrieRoots ~> #pushBlockchainState ~> #incrementBlockNumber ~> #rpcResponseSuccess(true) ... </k>
          <params>     [ TIME:String, .JSONs ]                                                            </params>
          <timestamp>  _ => #parseWord( TIME )                                                            </timestamp>
          <logsBloom>  _ => #padToWidth( 256, .ByteArray )                                                </logsBloom>
          <ommersHash> _ => 13478047122767188135818125966132228187941283477090363246179690878162135454535 </ommersHash>
+         <timeDiff>   _ => #parseWord( TIME ) -Int #time()                                               </timeDiff>
 
     syntax KItem ::= "#mineBlock"
  // -----------------------------
     rule <k> #mineBlock
           => #finalizeBlock
           ~> #setParentHash #getBlockByNumber( LATEST, BLOCKLIST, {<network> NETWORK </network> | <block> BLOCK </block>} )
+          ~> #makeTxReceipts
           ~> #updateTrieRoots
           ~> #saveState
           ~> #startBlock
@@ -1744,7 +1841,7 @@ Mining
                    | "#updateTransactionsRoot"
                    | "#updateReceiptsRoot"
  // --------------------------------------
-    rule <k> #saveState => #incrementBlockNumber ~> #pushBlockchainState ... </k>
+    rule <k> #saveState => #pushBlockchainState ~> #incrementBlockNumber ... </k>
 
     rule <k> #incrementBlockNumber => . ... </k>
          <number> BN => BN +Int 1 </number>
@@ -1777,7 +1874,8 @@ Mining
     syntax KItem ::= "#updateTimestamp"
  // -----------------------------------
     rule <k> #updateTimestamp => . ... </k>
-         <timestamp> PREV => #if PREV <=Int #time() #then #time() #else PREV #fi </timestamp>
+         <timestamp> _ => #time() +Int TIMEDIFF </timestamp>
+         <timeDiff> TIMEDIFF </timeDiff>
 ```
 
 Retrieving logs
@@ -1806,7 +1904,7 @@ Retrieving logs
          <params> [ { PARAMS => "toBlock": "latest", PARAMS } , .JSONs ] </params>
       requires #getJSON("toBlock", { PARAMS }) ==K undef
 
-    rule <k> #eth_getLogs => #getLogs(#parseBlockIdentifier(#getString("fromBlock", { PARAMS })), #parseBlockIdentifier(#getString("toBlock", { PARAMS })), .List) ... </k>
+    rule <k> #eth_getLogs => #getLogs(#parseBlockIdentifier(#getJSON("fromBlock", { PARAMS })), #parseBlockIdentifier(#getJSON("toBlock", { PARAMS })), .List) ... </k>
          <params> [ { PARAMS } , .JSONs ] </params>
       requires #getJSON("fromBlock", { PARAMS }) =/=K undef
        andBool #getJSON("toBlock"  , { PARAMS }) =/=K undef
@@ -1896,7 +1994,6 @@ Unimplemented Methods
                    | "#eth_syncing"
                    | "#bzz_hive"
                    | "#bzz_info"
-                   | "#debug_traceTransaction"
                    | "#miner_start"
                    | "#miner_stop"
                    | "#personal_sendTransaction"
@@ -1927,7 +2024,6 @@ Unimplemented Methods
     rule <k> #eth_syncing                             => #rpcResponseUnimplemented ... </k>
     rule <k> #bzz_hive                                => #rpcResponseUnimplemented ... </k>
     rule <k> #bzz_info                                => #rpcResponseUnimplemented ... </k>
-    rule <k> #debug_traceTransaction                  => #rpcResponseUnimplemented ... </k>
     rule <k> #miner_start                             => #rpcResponseUnimplemented ... </k>
     rule <k> #miner_stop                              => #rpcResponseUnimplemented ... </k>
     rule <k> #personal_sendTransaction                => #rpcResponseUnimplemented ... </k>
